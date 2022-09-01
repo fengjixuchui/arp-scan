@@ -337,7 +337,7 @@ main(int argc, char *argv[]) {
       if ((argc - optind) < 1)
          usage(EXIT_FAILURE, 0);
 /*
- * Create MAC/Vendor hash table if quiet if not in effect.
+ * Create MAC/Vendor hash table if quiet is not in effect.
  */
    if (!quiet_flag) {
       char *fn;
@@ -681,7 +681,7 @@ display_packet(host_entry *he, arp_ether_ipv4 *arpei,
       free(cp);
    }
 /*
- *	Find vendor from hash table and add to message if quiet if not in
+ *	Find vendor from hash table and add to message if quiet is not in
  *	effect.
  *
  *	We start with more specific matches (against larger parts of the
@@ -1257,7 +1257,7 @@ usage(int status, int detailed) {
 }
 
 /*
- *      add_host_pattern -- Add one or more new host to the list.
+ *      add_host_pattern -- Add one or more new hosts to the list.
  *
  *      Inputs:
  *
@@ -1610,7 +1610,7 @@ find_host(host_entry **he, struct in_addr *addr) {
       return NULL;
    }
 /*
- *	Try to match against out host list.
+ *	Try to match against our host list.
  */
    p = he;
 
@@ -1730,6 +1730,13 @@ callback(u_char *args ATTRIBUTE_UNUSED,
    if (n < ETHER_HDR_SIZE + ARP_PKT_SIZE) {
       printf("%d byte packet too short to decode\n", n);
       return;
+   }
+/*
+ *	Limit packet size to the maximum Ethernet frame size we expect
+ *	to avoid potential buffer overruns later.
+ */
+   if (n > MAX_FRAME) {
+      n = MAX_FRAME;
    }
 /*
  *	Unmarshal packet buffer into structures and determine framing type
@@ -2042,7 +2049,7 @@ arp_scan_version (void) {
  *	Inputs:
  *
  *	name		The name to lookup
- *	af		The address family
+ *	af		The address family, typically AF_INET
  *	addr		Pointer to the IP address buffer
  *	error_msg	The error message, or NULL if no problem.
  *
@@ -2316,6 +2323,9 @@ unmarshal_arp_pkt(const unsigned char *buffer, size_t buf_len,
    if (extra_data != NULL) {
       int length;
 
+/*
+ * buf_len will not exceed MAX_FRAME
+ */
       length = buf_len - (cp - buffer);
       if (length > 0) {		/* Extra data after ARP packet */
          memcpy(extra_data, cp, length);
@@ -2393,7 +2403,7 @@ add_mac_vendor(const char *map_filename) {
          data=Malloc(data_len+1);
 /*
  * We cannot use strlcpy because the source is not guaranteed to be null
- * terminated. Therefore we use strncpy, specifying one less that the total
+ * terminated. Therefore we use strncpy, specifying one less than the total
  * length, and manually null terminate the destination.
  */
          strncpy(key, line+pmatch[1].rm_so, key_len);
@@ -2482,27 +2492,48 @@ get_source_ip(const char *interface_name, struct in_addr *ip_addr) {
    while (device != NULL && (strcmp(device->name,interface_name) != 0)) {
       device=device->next;
    }
-   if (device == NULL) {
-      warn_msg("ERROR: Could not find interface: %s", interface_name);
-      err_msg("ERROR: Check that the interface exists and is up");
-   }
-
-   for (addr=device->addresses; addr != NULL; addr=addr->next) {
-      sa = addr->addr;
-      if (sa->sa_family == AF_INET) {
-         sin = (struct sockaddr_in *) sa;
-         break;
+   if (device != NULL) { /* We found a device name match */
+      for (addr=device->addresses; addr != NULL; addr=addr->next) {
+         sa = addr->addr;
+         if (sa->sa_family == AF_INET) {
+            sin = (struct sockaddr_in *) sa;
+            break;
+         }
       }
-   }
-   if (sin == NULL) {
-      memset(&(ip_addr->s_addr), '\0', sizeof(ip_addr->s_addr));
+      if (sin == NULL) {
+         memset(&(ip_addr->s_addr), '\0', sizeof(ip_addr->s_addr));
+         pcap_freealldevs(alldevsp);
+         return -1;
+      }
+
+      memcpy(ip_addr, &(sin->sin_addr), sizeof(*ip_addr));
+
       pcap_freealldevs(alldevsp);
-      return -1;
+
+      return 0;
+   } else {
+/* If we reach here then we have not found the interface name in the list
+ * supplied by pcap_findalldevs() so try getifaddrs() instead if available.
+ * This happens for legacy Linux alias interfaces with names like eth0:0.
+ * Ref: https://github.com/royhills/arp-scan/issues/3
+ */
+#ifdef HAVE_GETIFADDRS
+      struct ifaddrs *ifap, *ifa;
+
+      if ((getifaddrs(&ifap)) != 0) {
+         err_sys("getifaddrs");
+      }
+      for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+         if (ifa->ifa_addr && ifa->ifa_addr->sa_family==AF_INET &&
+             strcmp(ifa->ifa_name,interface_name) == 0) {
+            sin = (struct sockaddr_in *) ifa->ifa_addr;
+            memcpy(ip_addr, &(sin->sin_addr), sizeof(*ip_addr));
+            return 0;
+         }
+      }
+      freeifaddrs(ifap);
+#endif
    }
-
-   memcpy(ip_addr, &(sin->sin_addr), sizeof(*ip_addr));
-
-   pcap_freealldevs(alldevsp);
-
-   return 0;
+/* If we reach here then we haven't found an IP address */
+   return -1;
 }
