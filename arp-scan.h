@@ -59,17 +59,6 @@
 #include <netdb.h>
 #endif
 
-#ifdef HAVE_GETOPT_H
-#include <getopt.h>
-#else
-/* Include getopt.h for the sake of getopt_long.
-   We don't need the declaration of getopt, and it could conflict
-   with something from a system header file, so effectively nullify that.  */
-#define getopt getopt_loser
-#include "getopt.h"
-#undef getopt
-#endif
-
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
@@ -118,6 +107,24 @@
 
 #ifdef HAVE_IFADDRS_H
 #include <ifaddrs.h>
+#endif
+
+/* Mersenne Twister random number generator prototypes */
+#include "mt19937ar.h"
+
+/* OpenBSD strlcat and strlcpy prototypes */
+#ifndef HAVE_STRLCPY
+#include "strlcpy.h"
+#endif
+
+/* Include the system getopt.h if getopt_long_only() is supported. Otherwise
+ * include our replacement my_getopt.h */
+#ifdef HAVE_GETOPT_LONG_ONLY
+#ifdef HAVE_GETOPT_H
+#include <getopt.h>
+#endif
+#else
+#include "my_getopt.h"
 #endif
 
 /* Defines */
@@ -195,13 +202,6 @@ typedef struct {
 
 /* Functions */
 
-#ifndef HAVE_STRLCAT
-size_t strlcat(char *dst, const char *src, size_t siz);
-#endif
-#ifndef HAVE_STRLCPY
-size_t strlcpy(char *dst, const char *src, size_t siz);
-#endif
-
 void err_sys(const char *, ...);
 void warn_sys(const char *, ...);
 void err_msg(const char *, ...);
@@ -226,6 +226,7 @@ char *make_message(const char *, ...);
 void callback(u_char *, const struct pcap_pkthdr *, const u_char *);
 void process_options(int, char *[]);
 struct in_addr *get_host_address(const char *, int, struct in_addr *, char **);
+char *get_host_name(const struct in_addr, char **);
 const char *my_ntoa(struct in_addr);
 int get_source_ip(const char *, struct in_addr *);
 void get_hardware_address(const char *, unsigned char []);
@@ -249,12 +250,3 @@ char *my_lookupdev(char *);
 unsigned str_to_bandwidth(const char *);
 unsigned str_to_interval(const char *);
 char *dupstr(const char *);
-/* MT19937 prototypes */
-void init_genrand(unsigned long);
-void init_by_array(unsigned long[], int);
-unsigned long genrand_int32(void);
-long genrand_int31(void);
-double genrand_real1(void);
-double genrand_real2(void);
-double genrand_real3(void);
-double genrand_res53(void);

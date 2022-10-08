@@ -5,7 +5,7 @@
 .\" are permitted in any medium without royalty provided the copyright
 .\" notice and this notice are preserved.
 .\"
-.TH ARP-SCAN 1 "July 5, 2020"
+.TH ARP-SCAN 1 "October 7, 2022"
 .\" Please adjust this date whenever revising the man page.
 .SH NAME
 arp-scan \- The ARP scanner
@@ -454,10 +454,16 @@ footer text, and only displays one line for each
 responding host. Useful if the output will be
 parsed by a script.
 .TP
+.B --resolve or -d
+Resolve IP addresses to hostnames.
+Displays the hostname instead of IP address if name
+resolution succeeds.
+.TP
 .B --ignoredups or -g
 Don't display duplicate packets.
 By default, duplicate packets are displayed and are
-flagged with "(DUP: n)".
+flagged with "(DUP: n)" where n is the number of
+times this host has responded.
 .TP
 .B --ouifile=<s> or -O <s>
 Use IEEE Ethernet OUI to vendor mapping file <s>.
@@ -616,6 +622,13 @@ programs that understand the pcap file format, such as
 .TP
 .B --rtt or -D
 Display the packet round-trip time.
+.TP
+.B --limit=<i> or -M <i>
+Exit after the specified number of hosts have responded.
+When this option is used arp-scan will exit with status 1 if
+the number of responding hosts is less then the specified
+limit. This can be used in scripts to check if fewer hosts
+respond without having to parse the program output.
 .SH FILES
 .TP
 .I /usr/local/share/arp-scan/ieee-oui.txt

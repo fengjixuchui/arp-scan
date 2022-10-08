@@ -1,5 +1,5 @@
 /*
- * The ARP Scanner (arp-scan) is Copyright (C) 2005-2019 Roy Hills
+ * The ARP Scanner (arp-scan) is Copyright (C) 2005-2022 Roy Hills
  *
  * This file is part of arp-scan.
  *
@@ -244,7 +244,7 @@ hexstring(const unsigned char *data, size_t size) {
  * 01-23-45-67-89-ab
  * 01:23:45:67:89:ab
  *
- * The hex characters [a-z] may be specified in either upper or lower case.
+ * The hex characters [a-f] may be specified in either upper or lower case.
  */
 int
 get_ether_addr(const char *address_string, unsigned char *ether_addr) {

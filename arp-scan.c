@@ -1,5 +1,5 @@
 /*
- * The ARP Scanner (arp-scan) is Copyright (C) 2005-2019 Roy Hills
+ * The ARP Scanner (arp-scan) is Copyright (C) 2005-2022 Roy Hills
  *
  * This file is part of arp-scan.
  *
@@ -87,9 +87,11 @@ static int write_pkt_to_file=0;		/* Write packet to file for debugging */
 static int rtt_flag=0;			/* Display round-trip time */
 static pcap_dumper_t *pcap_dump_handle = NULL;	/* pcap savefile handle */
 static int plain_flag=0;		/* Only show host information */
+static int resolve_flag=0;		/* Resolve IP addresses to hostnames */
 unsigned int random_seed=0;
 static unsigned retry_send = DEFAULT_RETRY_SEND; /* Number of send packet retries */
 static unsigned retry_send_interval = DEFAULT_RETRY_SEND_INTERVAL; /* Interval in seconds between send packet retries */
+static unsigned int host_limit=0;	/* Exit after n responders if nonzero */
 
 int
 main(int argc, char *argv[]) {
@@ -490,7 +492,7 @@ main(int argc, char *argv[]) {
       packet_out_len += PACKET_OVERHEAD;	/* Add layer 2 overhead */
       interval = ((uint64_t)packet_out_len * 8 * 1000000) / bandwidth;
       if (verbose > 1) {
-         warn_msg("DEBUG: pkt len=%u bytes, bandwidth=%u bps, interval=%u us",
+         warn_msg("DEBUG: pkt len=%zu bytes, bandwidth=%u bps, interval=%u us",
                   packet_out_len, bandwidth, interval);
       }
    }
@@ -510,11 +512,13 @@ main(int argc, char *argv[]) {
  *      Main loop: send packets to all hosts in order until a response
  *      has been received or the host has exhausted its retry limit.
  *
- *      The loop exits when all hosts have either responded or timed out.
+ *      The loop exits when all hosts have either responded or timed out;
+ *	or if the number of responders reaches host_limit when host_limit is
+ *	non zero.
  */
    reset_cum_err = 1;
    req_interval = interval;
-   while (live_count) {
+   while (live_count && !(host_limit != 0 && responders >= host_limit)) {
 /*
  *      Obtain current time and calculate deltas since last packet and
  *      last packet to this host.
@@ -621,7 +625,11 @@ main(int argc, char *argv[]) {
              PACKAGE_STRING, num_hosts, elapsed_seconds,
              num_hosts/elapsed_seconds, responders);
    }
-   return 0;
+/*
+ * exit with status 1 if host_limit has been set with the --limit option and the
+ * number of responding hosts is less than this limit. Otherwise exit with status 0.
+ */
+   return (host_limit == 0 || responders >= host_limit) ? 0 : 1;
 }
 
 /*
@@ -653,11 +661,23 @@ display_packet(host_entry *he, arp_ether_ipv4 *arpei,
    char *msg;
    char *cp;
    char *cp2;
+   char *ga_err_msg;
    int nonzero=0;
 /*
  *	Set msg to the IP address of the host entry and a tab.
  */
-   msg = make_message("%s\t", my_ntoa(he->addr));
+   if (resolve_flag) {
+      cp2 = get_host_name(he->addr, &ga_err_msg);
+      if (cp2) {
+         msg = make_message("%s\t", cp2);
+      } else {
+         warn_msg("WARNING: getnameinfo() failed for \"%s\": %s",
+                  my_ntoa(he->addr), ga_err_msg);
+         msg = make_message("%s\t", my_ntoa(he->addr)); /* Fallback to IP address */
+      }
+   } else {
+      msg = make_message("%s\t", my_ntoa(he->addr));
+   }
 /*
  *	Decode ARP packet
  */
@@ -1125,9 +1145,13 @@ usage(int status, int detailed) {
       fprintf(stdout, "\t\t\tfooter text, and only displays one line for each\n");
       fprintf(stdout, "\t\t\tresponding host. Useful if the output will be\n");
       fprintf(stdout, "\t\t\tparsed by a script.\n");
+      fprintf(stdout, "\n--resolve or -d\t\tResolve IP addresses to hostnames.\n");
+      fprintf(stdout, "\t\t\tDisplays the hostname instead of IP address if name\n");
+      fprintf(stdout, "\t\t\tresolution succeeds.\n");
       fprintf(stdout, "\n--ignoredups or -g\tDon't display duplicate packets.\n");
       fprintf(stdout, "\t\t\tBy default, duplicate packets are displayed and are\n");
-      fprintf(stdout, "\t\t\tflagged with \"(DUP: n)\".\n");
+      fprintf(stdout, "\t\t\tflagged with \"(DUP: n)\" where n is the number of\n");
+      fprintf(stdout, "\t\t\ttimes this host has responded.\n");
       fprintf(stdout, "\n--ouifile=<s> or -O <s>\tUse IEEE Ethernet OUI to vendor mapping file <s>.\n");
       fprintf(stdout, "\t\t\tIf this option is not specified, the default filename\n");
       fprintf(stdout, "\t\t\tis %s in the current directory. If that is\n", OUIFILENAME);
@@ -1247,6 +1271,12 @@ usage(int status, int detailed) {
       fprintf(stdout, "\t\t\tprograms that understand the pcap file format, such as\n");
       fprintf(stdout, "\t\t\t\"tcpdump\" and \"wireshark\".\n");
       fprintf(stdout, "\n--rtt or -D\t\tDisplay the packet round-trip time.\n");
+      fprintf(stdout, "\n--limit=<i> or -M <i>\tExit after the specified number of hosts have responded.\n");
+      fprintf(stdout, "\t\t\tWhen this option is used arp-scan will exit with status\n");
+      fprintf(stdout, "\t\t\t1 if the number of responding hosts is less than the\n");
+      fprintf(stdout, "\t\t\tspecified limit. This can be used in scripts to check\n");
+      fprintf(stdout, "\t\t\tif fewer hosts respond without having to parse the\n");
+      fprintf(stdout, "\t\t\tprogram output.\n");
    } else {
       fprintf(stdout, "use \"arp-scan --help\" for detailed information on the available options.\n");
    }
@@ -1774,7 +1804,8 @@ callback(u_char *args ATTRIBUTE_UNUSED,
          }
          display_packet(temp_cursor, &arpei, extra_data, extra_data_len,
                         framing, vlan_id, &frame_hdr, header);
-         responders++;
+         if (temp_cursor->live)
+            responders++;
       }
       if (verbose > 1)
          warn_msg("---\tRemoving host %s - Received %d bytes",
@@ -1846,17 +1877,19 @@ process_options(int argc, char *argv[]) {
       {"rtt", no_argument, 0, 'D'},
       {"plain", no_argument, 0, 'x'},
       {"randomseed", required_argument, 0, OPT_RANDOMSEED},
+      {"limit", required_argument, 0, 'M'},
+      {"resolve", no_argument, 0, 'd'},
       {0, 0, 0, 0}
    };
 /*
  * available short option characters:
  *
- * lower:       --cde----jk--------------z
- * UPPER:       --C---G--JK-M-------U--X-Z
+ * lower:       --c-e----jk--------------z
+ * UPPER:       --C---G--JK---------U--X-Z
  * Digits:      0123456789
  */
    const char *short_options =
-      "f:hr:Y:E:t:i:b:vVn:I:qgRNB:O:s:o:H:p:T:P:a:A:y:u:w:S:F:m:lLQ:W:Dx";
+      "f:hr:Y:E:t:i:b:vVn:I:qgRNB:O:s:o:H:p:T:P:a:A:y:u:w:S:F:m:lLQ:W:DxM:d";
    int arg;
    int options_index=0;
 
@@ -2011,6 +2044,12 @@ process_options(int argc, char *argv[]) {
          case OPT_RANDOMSEED: /* --randomseed */
             random_seed=Strtoul(optarg, 0);
             break;
+         case 'M':	/* --limit */
+            host_limit = Strtoul(optarg, 10);
+            break;
+         case 'd':	/* --resolve */
+            resolve_flag = 1;
+            break;
          default:	/* Unknown option */
             usage(EXIT_FAILURE, 0);
             break;	/* NOTREACHED */
@@ -2034,7 +2073,7 @@ process_options(int argc, char *argv[]) {
 void
 arp_scan_version (void) {
    fprintf(stdout, "%s\n\n", PACKAGE_STRING);
-   fprintf(stdout, "Copyright (C) 2005-2019 Roy Hills\n");
+   fprintf(stdout, "Copyright (C) 2005-2022 Roy Hills\n");
    fprintf(stdout, "arp-scan comes with NO WARRANTY to the extent permitted by law.\n");
    fprintf(stdout, "You may redistribute copies of arp-scan under the terms of the GNU\n");
    fprintf(stdout, "General Public License.\n");
@@ -2094,6 +2133,43 @@ get_host_address(const char *name, int af, struct in_addr *addr,
 
    *error_msg = NULL;
    return addr;
+}
+
+/*
+ *	get_host_name -- Obtain target host name from IP address
+ *
+ *	Inputs:
+ *
+ *	addr		The IP address to lookup
+ *	name		Pointer to the name buffer
+ *	error_msg	The error message, or NULL if no problem.
+ *
+ *	Returns:
+ *
+ *	Pointer to the host name, or NULL if an error occurred.
+ *
+ *	This function is basically a wrapper for getnameinfo().
+ */
+char *
+get_host_name(const struct in_addr addr, char **error_msg) {
+   static char err[MAXLINE];
+   static char name[MAXLINE];
+
+   struct sockaddr_in sa_in;
+   int result;
+
+   sa_in.sin_family = AF_INET;
+   sa_in.sin_addr = addr;
+   result = getnameinfo((struct sockaddr *)&sa_in, sizeof(sa_in), name,
+                        MAXLINE, NULL, 0, 0);
+   if (result != 0) {	/* Error occurred */
+      snprintf(err, MAXLINE, "%s", gai_strerror(result));
+      *error_msg = err;
+      return NULL;
+   }
+
+   *error_msg = NULL;
+   return name;
 }
 
 /*
@@ -2425,7 +2501,7 @@ add_mac_vendor(const char *map_filename) {
          hash_entry.key = key;
          hash_entry.data = data;
          if ((hsearch(hash_entry, ENTER)) == NULL) {
-            warn_msg("hsearch([%s, %s], ENTER)", key, data);
+            err_sys("ERROR: hsearch([%s, %s], ENTER) failed", key, data);
          } else {
             line_count++;
          }

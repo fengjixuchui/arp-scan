@@ -1,3 +1,88 @@
+2022-10-07 Roy Hills <Roy.Hills@nta-monitor.com>
+
+	* arp-scan.c, arp.scan.h: New option --resolve (-d) to resolve IP addresses to hostnames. When this option
+	  is specified, responding hosts will be displayed as hostnames instead of IP addresses if they can be
+	  resolved.
+
+	* my_getopt.c, my_getopt.h: New getopt implementation using bsittler's version
+	  from http://xent.com/~bsittler/geocities/.
+
+	* configure.ac: Modified to use new getopt implementation.
+
+2022-10-05 Roy Hills <Roy.Hills@nta-monitor.com>
+
+	* arp-scan.c, arp-scan.1: Documented the exit status when --limit
+	  is specified and fewer than the specified number of hosts respond.
+
+2022-10-02 Roy Hills <Roy.Hills@nta-monitor.com>
+
+	* acinclude.m4: fix typo in 'if test "X$CC" != "X"' checks.
+
+2022-09-28 Roy Hills <Roy.Hills@nta-monitor.com>
+
+	* arp-scan.c: Added --limit (-M) option. When this option is
+	  given, arp-scan will exit after the specified number of target
+	  hosts have responded. Thanks to mirfatif for suggesting this
+	  enhancement.
+
+	* arp-scan.c: Don't increment number of responders for duplicate
+	  response packets. The number of responders now represents the
+	  number of responding hosts rather than the number of response
+	  packets.
+
+	* pkt-dup-response.pcap: new file
+
+	* check-decode: Added duplicate response packet checks
+
+	* arp-scan.1: Updated manpage to reflect new --limit option.
+
+2022-09-18 Roy Hills <Roy.Hills@nta-monitor.com>
+
+	* check-decode, check-host-list, check-packet, check-run1: Changed
+	  "$srcdir/arp-scan" to "./arp-scan" in test scripts so
+	  "make distcheck" succeeds.
+
+	* .github/workflows/c-cpp.yml: Enable "make distcheck" step.
+
+2022-09-14 Roy Hills <Roy.Hills@nta-monitor.com>
+
+	* README.md, .github/workflows/*: Migrated from travis-ci to github
+	  actions for CI/CD build check and code coverage report.
+
+	* .travis.yml: removed as no longer needed.
+
+2022-09-11 Roy Hills <Roy.Hills@hotmail.com>
+
+	* arp-scan.h, configure.ac, getopt.c, getopt1.c: only include
+	  the local replacement getopt header file if the system doesn't
+	  support getopt_long_only.  Previously it was being included even
+	  if it wasn't required.
+
+	* getopt.h: rename to my_getopt.h.
+
+2022-09-10 Roy Hills <Roy.Hills@hotmail.com>
+
+	* acinclude.m4: Replaced obsolete autoconf macros AC_TRY_COMPILE with
+	  AC_COMPILE_IFELSE and AC_TRY_LINK with AC_LINK_IFELSE. These macros
+	  were obsoleted in autoconf 2.70.
+
+	* strlcat.h: included this new file that was missed out of the previous
+	  commit.
+
+2022-09-09 Roy Hills <Roy.Hills@hotmail.com>
+
+	* arp-scan.c: Die with error message if hsearch() fails when adding a
+	  new entry to the hash table. Previous behaviour was to issue a
+	  warning and continue.
+
+	* mt19937ar.c, mt19937ar.h, Makefile.am, arp-scan.h: Update Mersenne Twister
+	  random number generator source code to latest version from
+	  https://github.com/clibs/mt19937ar
+
+	* strlcat.c, strlcpy.c: Updated from latest OpenBSD source.
+
+	* strlcat.h: New file containing function prototypes for strlcat() and strlcpy().
+
 2022-09-03 Roy Hills <Roy.Hills@hotmail.com>
 
 	* arp-scan.c: Allow MAC addresses in mac-vendor.txt to use either lower

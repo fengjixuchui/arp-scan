@@ -1,7 +1,8 @@
 # arp-scan
 
-[![Build Status](https://secure.travis-ci.org/royhills/arp-scan.png)](http://travis-ci.org/royhills/arp-scan)
-[![Coverage Status](https://coveralls.io/repos/royhills/arp-scan/badge.png?branch=master)](https://coveralls.io/r/royhills/arp-scan?branch=master)
+[![Build](https://github.com/royhills/arp-scan/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/royhills/arp-scan/actions/workflows/c-cpp.yml)
+[![Coverage Status](https://coveralls.io/repos/github/royhills/arp-scan/badge.svg?branch=master)](https://coveralls.io/github/royhills/arp-scan?branch=master)
+[![CodeQL](https://github.com/royhills/arp-scan/actions/workflows/codeql.yml/badge.svg)](https://github.com/royhills/arp-scan/actions/workflows/codeql.yml)
 
 The ARP scanner
 
