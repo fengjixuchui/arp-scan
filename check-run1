@@ -1,5 +1,5 @@
 #!/bin/sh
-# The ARP Scanner (arp-scan) is Copyright (C) 2005-2016 Roy Hills
+# arp-scan is Copyright (C) 2005-2022 Roy Hills
 #
 # This file is part of arp-scan.
 #
@@ -25,36 +25,38 @@
 # work.  These options don't use much of the arp-scan functionality, so if
 # they fail, then there is a fundamental problem with the program.
 #
-TMPFILE=/tmp/arp-scan-test.$$.tmp
-#
+ARPSCANOUTPUT=/tmp/arp-scan-test.$$.tmp
+
+# Check arp-scan --help
 echo "Checking arp-scan --help ..."
-./arp-scan --help > "$TMPFILE"
+./arp-scan --help > "$ARPSCANOUTPUT"
 if test $? -ne 0; then
-   rm -f "$TMPFILE"
+   rm -f "$ARPSCANOUTPUT"
    echo "FAILED"
    exit 1
 fi
-grep '^Report bugs or send suggestions at ' "$TMPFILE" >/dev/null
+grep '^Report bugs or send suggestions at ' "$ARPSCANOUTPUT" >/dev/null
 if test $? -ne 0; then
-   rm -f "$TMPFILE"
+   rm -f "$ARPSCANOUTPUT"
    echo "FAILED"
    exit 1
 fi
 echo "ok"
-#
+rm -f "$ARPSCANOUTPUT"
+
+# Check arp-scan --version
 echo "Checking arp-scan --version ..."
-./arp-scan --version > "$TMPFILE"
+./arp-scan --version > "$ARPSCANOUTPUT"
 if test $? -ne 0; then
-   rm -f "$TMPFILE"
+   rm -f "$ARPSCANOUTPUT"
    echo "FAILED"
    exit 1
 fi
-grep '^Copyright (C) ' "$TMPFILE" >/dev/null
+grep '^Copyright (C) ' "$ARPSCANOUTPUT" >/dev/null
 if test $? -ne 0; then
-   rm -f "$TMPFILE"
+   rm -f "$ARPSCANOUTPUT"
    echo "FAILED"
    exit 1
 fi
 echo "ok"
-#
-rm -f "$TMPFILE"
+rm -f "$ARPSCANOUTPUT"

@@ -1,5 +1,5 @@
 /*
- * The ARP Scanner (arp-scan) is Copyright (C) 2005-2022 Roy Hills
+ * arp-scan is Copyright (C) 2005-2022 Roy Hills
  *
  * This file is part of arp-scan.
  *
@@ -40,11 +40,10 @@
 #endif
 
 /*
- *	Link layer handle structure for packet socket.
- *	This is typedef'ed as link_t.
+ * Link layer handle structure for packet socket.
  */
 typedef struct link_handle {
-   int fd;		/* Socket file descriptor */
+   int fd; /* Socket file descriptor */
    struct ifreq ifr;
    struct sockaddr_ll sll;
 } link_t;
@@ -66,10 +65,8 @@ link_open(const char *device) {
 
    handle = Malloc(sizeof(*handle));
    memset(handle, '\0', sizeof(*handle));
-   if ((handle->fd = socket(PF_PACKET, SOCK_RAW, 0)) < 0) {
-      warn_msg("ERROR: Cannot open raw packet socket");
-      err_sys("socket");
-   }
+   if ((handle->fd = socket(PF_PACKET, SOCK_RAW, 0)) < 0)
+      err_sys("ERROR: Cannot open raw packet socket: socket()");
    strlcpy(handle->ifr.ifr_name, device, sizeof(handle->ifr.ifr_name));
    if ((ioctl(handle->fd, SIOCGIFINDEX, &(handle->ifr))) != 0)
       err_sys("ioctl");
@@ -116,13 +113,9 @@ void
 get_hardware_address(const char *if_name, unsigned char hw_address[]) {
    link_t *handle;
 
-   handle = link_open(if_name);
-   if(!handle) {
-       err_sys("link_open");
-       return;
-   }
+   handle = link_open(if_name);	/* Errors handled in link_open() function */
 
-/* Obtain hardware address for specified interface */
+   /* Obtain hardware address for specified interface */
    if ((ioctl(handle->fd, SIOCGIFHWADDR, &(handle->ifr))) != 0)
       err_sys("ioctl");
 

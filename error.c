@@ -1,6 +1,5 @@
 /*
- * The ARP scanner (arp-scan) is Copyright (C) 2005-2022
- * Roy Hills
+ * arp-scan is Copyright (C) 2005-2022 Roy Hills
  *
  * This file is part of arp-scan.
  *
@@ -25,10 +24,10 @@
 
 #include "arp-scan.h"
 
-int daemon_proc;	/* Non-zero if process is a daemon */
+int daemon_proc; /* Non-zero if process is a daemon */
 
 /*
- *	Function to handle fatal system call errors.
+ * Function to handle fatal system call errors.
  */
 void
 err_sys(const char *fmt,...) {
@@ -41,7 +40,7 @@ err_sys(const char *fmt,...) {
 }
 
 /*
- *	Function to handle non-fatal system call errors.
+ * Function to handle non-fatal system call errors.
  */
 void
 warn_sys(const char *fmt,...) {
@@ -53,7 +52,7 @@ warn_sys(const char *fmt,...) {
 }
 
 /*
- *	Function to handle fatal errors not from system calls.
+ * Function to handle fatal errors not from system calls.
  */
 void
 err_msg(const char *fmt,...) {
@@ -66,7 +65,7 @@ err_msg(const char *fmt,...) {
 }
 
 /*
- *	Function to handle non-fatal errors not from system calls.
+ * Function to handle non-fatal errors not from system calls.
  */
 void
 warn_msg(const char *fmt,...) {
@@ -78,24 +77,44 @@ warn_msg(const char *fmt,...) {
 }
 
 /*
- *	General error printing function used by all the above
- *	functions.
+ * General error printing function used by all the above
+ * functions.
  */
 void
 err_print (int errnoflag, const char *fmt, va_list ap) {
+   int n = 0;
+   size_t size = 0;
    int errno_save;
-   size_t n;
-   char buf[MAXLINE];
+   char *buf;
+   va_list ap_copy;
+   char *cp;
 
    errno_save=errno;
+/*
+ * Determine required size for the resultant string using copy
+ * arg ptr.
+*/
+   va_copy(ap_copy, ap);
+   n = vsnprintf(NULL, 0, fmt, ap_copy);
+   va_end(ap_copy);
+   if (n < 0)
+      return; /* vsnprintf output error */
 
-   vsnprintf(buf, MAXLINE, fmt, ap);
-   n=strlen(buf);
-   if (errnoflag)
-     snprintf(buf+n, MAXLINE-n, ": %s", strerror(errno_save));
-   strlcat(buf, "\n", sizeof(buf));
+   size = (size_t) n + 1; /* One extra byte for '\0' */
 
-   fflush(stdout);	/* In case stdout and stderr are the same */
+   buf = Malloc(size);
+
+   vsnprintf(buf, size, fmt, ap);
+   size=strlen(buf);
+   cp = buf;
+   if (errnoflag) {
+      buf = make_message("%s: %s\n", cp, strerror(errno_save));
+   } else {
+      buf = make_message("%s\n", cp);
+   }
+   free(cp);
+
+   fflush(stdout); /* In case stdout and stderr are the same */
    fputs(buf, stderr);
    fflush(stderr);
 }

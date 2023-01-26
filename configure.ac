@@ -1,9 +1,9 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([arp-scan],[1.9.8],[https://github.com/royhills/arp-scan])
-AC_PREREQ([2.61])
-AC_REVISION($Revision$)
+AC_INIT([arp-scan],[1.10.1-git],[https://github.com/royhills/arp-scan])
+AC_PREREQ([2.69])
 AC_CONFIG_SRCDIR([arp-scan.c])
+AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE
 
 AC_CONFIG_HEADERS([config.h])
@@ -29,6 +29,7 @@ AC_ARG_ENABLE(gcov,
    ] )
 
 dnl Checks for programs.
+AC_PROG_SED
 AC_PROG_CC
 if test -n "$GCC"; then
    AC_DEFINE([ATTRIBUTE_UNUSED], [__attribute__ ((__unused__))],
@@ -77,6 +78,9 @@ AC_LINK_IFELSE([AC_LANG_CALL([], [pcap_set_immediate_mode])],
    AC_MSG_ERROR([Check that the pcap library is at least version 1.5])
    ])
 
+# Check for libcap POSIX.1e capability support
+CHECK_LIBCAP
+
 dnl Checks for header files.
 
 dnl Check for C POSIX library header files
@@ -105,12 +109,12 @@ dnl Determine link-layer implementation to use based on the $host_os variable
 dnl
 case $host_os in
    *linux* )
-      AC_MSG_NOTICE([Using packet socket link layer implementation.]);
+      AC_MSG_NOTICE([Using packet socket link layer implementation.])
       AC_CHECK_HEADERS([netpacket/packet.h net/if.h])
       AC_LIBOBJ([link-packet-socket])
       ;;
    *freebsd* | *darwin* | *openbsd* | *netbsd* | *dragonfly* )
-      AC_MSG_NOTICE([Using BPF link layer implementation.]);
+      AC_MSG_NOTICE([Using BPF link layer implementation.])
 dnl We need to specify additional headers to include here, because several
 dnl BSD variants require certain headers to be included before others will
 dnl work.
@@ -130,8 +134,8 @@ dnl OpenBSD 3.9 needs sys/param.h included for sys/sysctl.h
       AC_LIBOBJ([link-bpf])
       ;;
    *solaris* )
-      AC_MSG_NOTICE([Using DLPI link layer implementation.]);
-      AC_MSG_NOTICE([NOTE: This works on Solaris 8,9 and 10 but fails on Solaris 11.]);
+      AC_MSG_NOTICE([Using DLPI link layer implementation.])
+      AC_MSG_NOTICE([NOTE: This works on Solaris 8,9 and 10 but fails on Solaris 11.])
 dnl Solaris 9 needs sys/types.h and sys/socket.h included before net/if.h.
       AC_CHECK_HEADERS([sys/dlpi.h sys/dlpihdr.h stropts.h sys/ioctl.h sys/sockio.h net/if.h sys/bufmod.h],,,
       [
@@ -154,13 +158,11 @@ AC_CHECK_FUNC([getopt_long_only],
               [ AC_LIBOBJ([my_getopt])
                 AC_LIBSOURCE([my_getopt.h]) ])
 
-dnl Check for strlcat and strlcpy.  If we don't have them, use the replacement
-dnl functions from OpenBSD.  Most modern C libraries have these functions,
-dnl but some such as as glibc don't.
+dnl Check for strlcpy.  If we don't have it, use the replacement function
+dnl from OpenBSD.  This is needed for systems using glibc.
 AC_CHECK_FUNC([strlcpy],
               [AC_DEFINE(HAVE_STRLCPY, 1, [Define to 1 if the C library includes the strlcpy function])],
-              [ AC_LIBOBJ([strlcat])
-                AC_LIBOBJ([strlcpy])
+              [ AC_LIBOBJ([strlcpy])
                 AC_LIBSOURCE([strlcpy.h]) ])
 
 AC_CONFIG_FILES([Makefile])

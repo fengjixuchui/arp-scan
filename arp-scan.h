@@ -1,5 +1,5 @@
 /*
- * ARP Scan is Copyright (C) 2005-2016 Roy Hills
+ * ARP Scan is Copyright (C) 2005-2022 Roy Hills
  *
  * This file is part of arp-scan.
  *
@@ -22,7 +22,6 @@
  * Date:	11 October 2005
  *
  */
-
 /* Includes */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -35,20 +34,18 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <limits.h>
+#include <assert.h>
 
 #include <sys/types.h>
 
-/* Integer types */
+/* Integer types (C99) */
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #else
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
-#endif
-
-#ifdef __CYGWIN__
-#include <windows.h>	/* Include windows.h if compiling under Cygwin */
 #endif
 
 #ifdef HAVE_UNISTD_H
@@ -109,10 +106,14 @@
 #include <ifaddrs.h>
 #endif
 
+#ifdef __CYGWIN__
+#include <windows.h>	/* Include windows.h if compiling under Cygwin */
+#endif
+
 /* Mersenne Twister random number generator prototypes */
 #include "mt19937ar.h"
 
-/* OpenBSD strlcat and strlcpy prototypes */
+/* OpenBSD strlcpy prototype */
 #ifndef HAVE_STRLCPY
 #include "strlcpy.h"
 #endif
@@ -125,6 +126,11 @@
 #endif
 #else
 #include "my_getopt.h"
+#endif
+
+#ifdef HAVE_SYS_CAPABILITY_H
+#include <sys/prctl.h>
+#include <sys/capability.h>
 #endif
 
 /* Defines */
@@ -151,7 +157,6 @@
 #define ETH_P_IP 0x0800			/* Internet Protocol packet */
 #define ETH_P_ARP 0x0806		/* Address Resolution packet */
 #define OUIFILENAME "ieee-oui.txt"	/* Default IEEE OUI filename */
-#define IABFILENAME "ieee-iab.txt"	/* Default IEEE IAB filename */
 #define MACFILENAME "mac-vendor.txt"	/* Default MAC/Vendor filename */
 #define DEFAULT_ARP_OP ARPOP_REQUEST	/* Default ARP operation */
 #define DEFAULT_ARP_HRD ARPHRD_ETHER	/* Default ARP hardware type */
@@ -164,10 +169,11 @@
 #define OPT_WRITEPKTTOFILE 256		/* --writepkttofile option */
 #define OPT_READPKTFROMFILE 257		/* --readpktfromfile option */
 #define OPT_RANDOMSEED 258		/* --randomseed option */
-#define HASH_TABLE_SIZE 50000		/* Max size of OUI/Vendor hash table */
+#define HASH_TABLE_SIZE 70000		/* Max size of MAC/Vendor hash table */
 #define DEFAULT_RETRY_SEND 20		/* Default no. of send packet retries */
 #define DEFAULT_RETRY_SEND_INTERVAL 5000  /* Default interval between send
                                         * packet retries in microseconds */
+#define NUMFIELDS 11			/* Number of output fields */
 
 /* Structures */
 
@@ -200,6 +206,32 @@ typedef struct {
    uint32_t ar_tip;		/* Target IP address */
 } arp_ether_ipv4;
 
+/* name to ID lookup map */
+typedef struct {
+   int id;
+   const char *name;
+} id_name_map;
+
+/* output format */
+enum format_type {
+   FORMAT_INVALID,
+   FORMAT_STRING,
+   FORMAT_FIELD
+};
+
+typedef struct format_element {
+        struct format_element *next;
+        enum format_type type;
+        int width;
+        char *data;
+} format_element;
+
+/* POSIX.1e Capability status */
+typedef enum {
+   DISABLE = 0,
+   ENABLE
+} cap_status;
+
 /* Functions */
 
 void err_sys(const char *, ...);
@@ -207,7 +239,7 @@ void warn_sys(const char *, ...);
 void err_msg(const char *, ...);
 void warn_msg(const char *, ...);
 void err_print(int, const char *, va_list);
-void usage(int, int);
+void usage(void);
 void add_host_pattern(const char *, unsigned);
 void add_host(const char *, unsigned, int);
 int send_packet(pcap_t *, host_entry *, struct timeval *);
@@ -225,7 +257,7 @@ void arp_scan_version(void);
 char *make_message(const char *, ...);
 void callback(u_char *, const struct pcap_pkthdr *, const u_char *);
 void process_options(int, char *[]);
-struct in_addr *get_host_address(const char *, int, struct in_addr *, char **);
+struct in_addr *get_host_address(const char *, struct in_addr *, char **);
 char *get_host_name(const struct in_addr, char **);
 const char *my_ntoa(struct in_addr);
 int get_source_ip(const char *, struct in_addr *);
@@ -250,3 +282,9 @@ char *my_lookupdev(char *);
 unsigned str_to_bandwidth(const char *);
 unsigned str_to_interval(const char *);
 char *dupstr(const char *);
+void limit_capabilities(void);
+void set_capability(cap_status);
+void drop_capabilities(void);
+int name_to_id(const char *, const id_name_map[]);
+int str_ccmp(const char *, const char *);
+format_element *format_parse(const char *);

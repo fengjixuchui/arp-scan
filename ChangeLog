@@ -1,24 +1,296 @@
-2022-10-07 Roy Hills <Roy.Hills@nta-monitor.com>
+2023-01-26 Roy Hills <royhills@hotmail.com>
 
-	* arp-scan.c, arp.scan.h: New option --resolve (-d) to resolve IP addresses to hostnames. When this option
-	  is specified, responding hosts will be displayed as hostnames instead of IP addresses if they can be
-	  resolved.
+	* mac-vendor.txt: Incorporate OpenBSD patch for version 1.10.0 to this
+	  file to add CARP, IPv6 VRRPv3 and OpenBSD random MAC addresses.
+	  Thanks to @sthen for the patch.
 
-	* my_getopt.c, my_getopt.h: New getopt implementation using bsittler's version
-	  from http://xent.com/~bsittler/geocities/.
+	* link-bpf.c: Incorporate OpenBSD patch for version 1.10.0 to this
+	  file to skip messages with incorrect version. Thanks to @sthen for
+	  this patch.
+
+	* .github/workflows/c-cpp.yml, .github/workflows/code-coverage.yml:
+          Added "sudo make install" and "arp-scan -vv --localnet --limit=1"
+          to Ubuntu build and coveralls coverage run. This increases
+	  code coverage by 7.4% on Linux and makes the commit checks more
+	  robust.
+
+	* arp-scan.c, format.c, mt19937ar.c, utils.c, wrappers.c, check-error,
+          check-options, check-decode: Various checks and minor code changes
+	  to increase code test coverage: Use assert() for things that should
+	  never fail. Added various tests. Remove switch break statements that
+	  obviously won't ever be reached (one left that's obvious to me but
+	  not to gcc 12.2). Removed unneeded code lines. Together with the
+	  "arp-scan --localnet" option mentioned above, Linux code coverage
+	  has increased to 90.1%.
+
+2023-01-18 Roy Hills <royhills@hotmail.com>
+
+	* mac-vendor.txt: Change the naming of the VRRP protocol to
+	  include OpenBSD's CARP. Should remove the need for the OpenBSD
+	  arp-scan patch "patch-mac-vendor_txt".
+
+2023-01-14 Roy Hills <royhills@hotmail.com>
+
+	* configure.ac: Change version number from 10.0.1 to 10.0.1-git.
+	  From now on development versions will have "-git" appended to the
+	  version number. So 10.0.0 is a release version, 10.0.1-git is the
+	  development version, and 10.0.1 will be the next release version.
+
+2023-01-14 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.c, arp-scan.1: Do not attempt to open ieee-oui.txt or
+	  mac-vendor.txt in the current directory if stat() fails with EACCES
+	  (permission denied). This can happen if the user does not have
+	  execute (search) permission in the current directory due to running
+	  a capabilities aware arp-scan build as root. Thanks to jaskij for
+	  reporting this bug.
+
+2023-01-07 Roy Hills <royhills@hotmail.com>
+
+	* arp-fingerprint, arp-fingerprint.1: Added arp-fingerprint -m option
+	  to include the target's MAC address in the output. Thanks to
+	  Bogdan107 for the suggestion.
+
+2022-12-18 Roy Hills <royhills@hotmail.com>
+
+	* configure.ac: Increment version to 1.10.1 in preparation for
+          post-1.10.0 changes.
+
+	* get-oui: Display the underlying error message instead of giving a
+	  generic error if the web download fails.
+
+	* ieee-oui.txt: Updated with latest IEEE registry data using modified
+	  get-oui script. Total of 47430 MAC/Vendor mappings.
+
+2022-12-10 Roy Hills <royhills@hotmail.com>
+
+	* configure.ac: Set version to 1.10.0.
+
+	* Git: Tagged as 1.10.0
+
+	* ieee-oui.txt: Updated from IEEE website. Total of 47345 MAC/Vendor
+	  mappings.
+
+2022-12-01 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.h: Make cap_status enum values explicit.
+
+	* configure.ac: Set version to 1.10-rc1.
+
+2022-11-25 Roy Hills <royhills@hotmail.com>
+
+	* Makefile.am: Add $(PACKAGE) to the PKGSYSCONFDIR macro definition
+	  so arp-scan looks in the correct directory for the mac-vendor.txt
+	  file.  Thanks to Richard Hoyle for reporting this bug.
+
+	* error.c, format.c, link-bpf.c, link-dlpi.c, link-packet-socket.c,
+	  wrappers.c, utils.c, arp-scan.c: Standardise code formatting.
+
+2022-11-11 Roy Hills <royhills@hotmail.com>
+
+	* Makefile.am: Added install-exec-hook to set the CAP_NET_RAW
+	  capability on the arp-scan executable if "setcap" exists and
+	  works.  Otherwise falls back to setting the SUID bit.
+
+2022-11-09 Roy Hills <royhills@hotmail.com>
+
+	* check-error, check-options, Makefile.am: Added new tests to check
+	  various options and error conditions.
+
+	* arp-scan.c, arp-scan.1.dist: Updated manpage and help text.
+
+	* pre-release-testing.txt: Removed unneeded and outdated file.
+
+2022-11-07 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.c: Changed C99 "for (int i=0..." syntax to C89
+	  "for (i=0..." format. This caused errors with old toolchain e.g.
+	  autoconf 2.69/gcc 4.9.2 on Debian Jessie.
+
+	* check-run1: Moved error checks to check-error.
+
+	* check-error: New file to check error conditions.
+
+	* Makefile.am: Updated list of test scripts.
+
+	* check-decode: Check for any hostname, not just "localhost"
+	  because not all distros use that name.
+
+	* arp-scan.c, arp-scan.1.dist: Correct the short option letter
+	  for the --macfile option.  It was incorectly shown as "O"
+	  when it should be "m".
+
+2022-11-06 Roy Hills <royhills@hotmail.com>
+
+	* Makefile.am: Install mac-vendor.txt to $(sysconfdir)/$(PACKAGE)
+	  instead of $(pkgdatadir). With a default ./configure this will be
+	  /usr/local/etc/arp-scan.  For a binary package it will typically be
+	  /etc/arp-scan. This change is because users may add local entries to
+	  mac-vendor.txt that they want to preserve between package upgrades.
+
+	* arp-scan.c, arp-scan.1.dist: Update file paths for mac-vendor.txt.
+
+	* NEWS renamed to NEWS.md with NEWS symlink pointing to it.
+
+	* configure.ac, Makefile.am: use $(SED) variable, remove
+	  AC_REVISION($Revision$) because git doesn't expand keywords.
+	  Add AC_CONFIG_AUX_DIR([build-aux]) to declutter top level directory.
+	  Changed AC_PREREQ() from 2.61 to 2.69.
+
+2022-11-03 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.c, arp-scan.h: Don't display long usage message for
+	  unrecognised options and other simple issues, but display brief
+	  message and exit instead.  A brief error message is clearer than
+	  half a page of usage text.
+
+	* check-run1: Added tests for unrecognised option and no target hosts.
+
+2022-11-02 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.c, arp-scan.1.dist: Change --format short option character
+	  from -k to -F. The -F character became free when the --iabfile
+	  option was removed, and is a more logical choice.
+
+	  *** This means anyone who has been using the old -k short option ***
+	  *** for --format will need to change to the new -F option.       ***
+
+	* arp-scan.c, check-decode: Print warning message for unavailable
+	  --format fields in addition to unknown fields.  Updated test.
+
+	* arp-scan.c, check-decode: Only print vendor field if present for
+	  the default output format.  Previously it printed NULL if --quiet
+	  was specified. Added test to check-decode to check --quiet output.
+
+2022-11-01 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.h: Increase HASH_TABLE_SIZE from 50,000 to 70,000 due to
+	  addition of IEEE MA-M and MA-S registries.  ieee-oui.txt currently
+	  contains 47028 entries of 70000 (67.2%).
+
+	* get-oui.1: renamed to get-oui.1.dist with PKGDATADIR substitution.
+
+	* check-ieee-reg: New file to test IEEE registry lookup.
+
+	* Makefile.am: Build man page "get-oui.1" from "get-oui.dist", added
+	  check-ieee-reg test.
+
+	* get-oui: Changed IEEE URLs from http to https. This avoids an HTTP
+	  redirect from the http to https site.
+
+	* ieee-oui.txt: Updated from IEEE website.
+
+	* strlcat.c: removed. arp-scan only uses strlcpy(), so we don't need
+	  to ship replacement source code for strcat() as well.
+
+	* configure.ac, strlcpy.h: Removed references to strlcat.
+
+2022-10-31 Roy Hills <royhills@hotmail.com>
+
+	* get-oui: Changed to fetch registry data from all four IEEE registries
+	  (MA-L, MA-M, MA-S and IAB), format appropriately for arp-scan, and
+	  concatenate into ieee-oui.
+	* get-iab: No longer needed. Replaced with stub script that calls die.
+	* Makefile.am, check-decode, check-host-list: Removed get-iab / iabfile
+	  references.
+	* arp-scan.c, arp-scan.h: Removed --iabfile option.
+	* README.md, arp-scan.1.dist, get-oui.1, mac-vendor.5, mac-vendor.txt:
+	  Update text to reflect changes.
+	* get-iab.1: Removed. No longer needed.
+	* ieee-iab.txt: Removed. No longer needed.
+	* ieee-oui.txt: Updated to new combined registry format.
+
+2022-10-30 Roy Hills <royhills@hotmail.com>
+
+	* Makefile.am: Build man page "arp-scan.1" from "arp-scan.dist"
+	  replacing all occurances of @pkgdatadir@ with the $pkgdatadir
+	  variable that is set by configure. This ensures that the file
+	  paths in the manpage arp-scan.1 reflect the paths on the system
+	  where ./configure was run.
+	* arp-scan.1: renamed to arp-scan.1.dist with PKGDATADIR substitution.
+
+2022-10-27 Roy Hills <royhills@hotmail.com>
+
+	* arp-fingerprint.1, arp-scan.1, get-iab.1, get-oui.1, mac-vendor.5:
+	  Standardised man page fonts, corrected some inaccuracies and removed
+	  author section.
+
+	* Updated ieee-oui.txt and ieee-iab.txt files.
+
+2022-10-25 Roy Hills <royhills@hotmail.com>
+
+	* format.c: New file containing output format functions.
+
+	* Makefile.am: Added format.c source file to arp_scan_SOURCES
+
+	* utils.c: Added name_to_id() and str_ccmp() functions.
+
+	* arp-scan.c, arp-scan.h, arp-scan.1: Add --format option and output
+	  fields processing code.
+
+2022-10-24 Roy Hills <royhills@hotmail.com>
+
+	* Makefile.am, check-decode: Added checks to test output format with
+	  --rtt, --resolve, different ARP/header address, and locally
+	  administered MAC address.
+
+	* pkt-diff-frame-addr.pcap, pkt-local-admin.pcap: New files for
+	  above tests.
+
+2022-10-23 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.c, error.c arp-scan.c, error.c: Changed most fixed-length
+	  strings to use dynamic length strings.
+
+	* utils.c: Changed make_message() to assume vsnprintf() behaves
+	  according to POSIX. No need to accomodate bugs in ancient glibc
+	  versions.
+
+2022-10-09 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.c: Added POSIX.1e capabilities support.
+
+	* configure.ac, acinclude.m4: Add autoconf tests for Linux libcap
+	  POSIX.1e capabilities support. Incremented version to 1.9.9 to
+	  reflect addition of POSIX.1e capabilities support.
+
+	* utils.c, arp-scan.h: New functions limit_capabilities() to limit the
+	  permitted capabilities, set_capability() to enable and disable
+	  capabilities, and drop_capabilities() to permanently drop all
+	  capabilities. These functions use libcap if POSIX.1e capabilities
+	  are supported otherwise they fall back to setuid() and seteuid().
+
+2022-10-08 Roy Hills <royhills@hotmail.com>
+
+	* Tagged as 1.9.8
+
+	* arp-scan.c: fix bug reported by mrquincle where ARP responses for
+	  a host that had timed out was being incorrectly flagged as a
+	  duplicate with the warning message "remove_host called on non-live
+	  host: SHOULDN'T HAPPEN".
+
+2022-10-07 Roy Hills <royhills@hotmail.com>
+
+	* arp-scan.c, arp.scan.h: New option --resolve (-d) to resolve IP
+	  addresses to hostnames. When this option is specified, responding
+	  hosts will be displayed as hostnames instead of IP addresses if they
+	  can be resolved.
+
+	* my_getopt.c, my_getopt.h: New getopt implementation using bsittler's
+	  version from http://xent.com/~bsittler/geocities/.
 
 	* configure.ac: Modified to use new getopt implementation.
 
-2022-10-05 Roy Hills <Roy.Hills@nta-monitor.com>
+2022-10-05 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c, arp-scan.1: Documented the exit status when --limit
 	  is specified and fewer than the specified number of hosts respond.
 
-2022-10-02 Roy Hills <Roy.Hills@nta-monitor.com>
+2022-10-02 Roy Hills <royhills@hotmail.com>
 
 	* acinclude.m4: fix typo in 'if test "X$CC" != "X"' checks.
 
-2022-09-28 Roy Hills <Roy.Hills@nta-monitor.com>
+2022-09-28 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c: Added --limit (-M) option. When this option is
 	  given, arp-scan will exit after the specified number of target
@@ -36,7 +308,7 @@
 
 	* arp-scan.1: Updated manpage to reflect new --limit option.
 
-2022-09-18 Roy Hills <Roy.Hills@nta-monitor.com>
+2022-09-18 Roy Hills <royhills@hotmail.com>
 
 	* check-decode, check-host-list, check-packet, check-run1: Changed
 	  "$srcdir/arp-scan" to "./arp-scan" in test scripts so
@@ -44,14 +316,14 @@
 
 	* .github/workflows/c-cpp.yml: Enable "make distcheck" step.
 
-2022-09-14 Roy Hills <Roy.Hills@nta-monitor.com>
+2022-09-14 Roy Hills <royhills@hotmail.com>
 
 	* README.md, .github/workflows/*: Migrated from travis-ci to github
 	  actions for CI/CD build check and code coverage report.
 
 	* .travis.yml: removed as no longer needed.
 
-2022-09-11 Roy Hills <Roy.Hills@hotmail.com>
+2022-09-11 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.h, configure.ac, getopt.c, getopt1.c: only include
 	  the local replacement getopt header file if the system doesn't
@@ -60,7 +332,7 @@
 
 	* getopt.h: rename to my_getopt.h.
 
-2022-09-10 Roy Hills <Roy.Hills@hotmail.com>
+2022-09-10 Roy Hills <royhills@hotmail.com>
 
 	* acinclude.m4: Replaced obsolete autoconf macros AC_TRY_COMPILE with
 	  AC_COMPILE_IFELSE and AC_TRY_LINK with AC_LINK_IFELSE. These macros
@@ -69,7 +341,7 @@
 	* strlcat.h: included this new file that was missed out of the previous
 	  commit.
 
-2022-09-09 Roy Hills <Roy.Hills@hotmail.com>
+2022-09-09 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c: Die with error message if hsearch() fails when adding a
 	  new entry to the hash table. Previous behaviour was to issue a
@@ -83,7 +355,7 @@
 
 	* strlcat.h: New file containing function prototypes for strlcat() and strlcpy().
 
-2022-09-03 Roy Hills <Roy.Hills@hotmail.com>
+2022-09-03 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c: Allow MAC addresses in mac-vendor.txt to use either lower
 	  or uppercase hex digits and ignore any seperator characters e.g. ":"
@@ -92,7 +364,7 @@
 
 	* mac-vendor.txt: Update comments to reflect code changes.
 
-2022-06-16 Roy Hills <Roy.Hills@hotmail.com>
+2022-06-16 Roy Hills <royhills@hotmail.com>
 
 	* get-iab: change IEEE IAB URL to
 	  http://standards-oui.ieee.org/iab/iab.txt. Thanks to silex for the
@@ -100,14 +372,14 @@
 
 	* Updated ieee-oui.txt and ieee-iab.txt files.
 
-2021-12-12 Roy Hills <Roy.Hills@hotmail.com>
+2021-12-12 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c: Limit packet length in callback() to prevent potential
 	  buffer overrun in unmarshal_arp_pkt() if network frames larger
 	  than expected are received by libpcap. Thanks to @mrquincle for
 	  reporting this issue.
 
-2021-11-17 Roy Hills <Roy.Hills@hotmail.com>
+2021-11-17 Roy Hills <royhills@hotmail.com>
 
 	* Use getifaddrs() to obtain the interface IP address if it is available
 	  and pcap_findalldevs() fails to find the address.
@@ -119,7 +391,7 @@
 	* Increment version number to 1.9.8 to reflect code and autoconf
 	  changes.
 
-2021-09-09 Roy Hills <Roy.Hills@hotmail.com>
+2021-09-09 Roy Hills <royhills@hotmail.com>
 
 	* Retry sending an ARP packet if the packet send function fails with
 	  EAGAIN instead of aborting with an error message. High packet send
@@ -136,13 +408,13 @@
 
 	* Updated ieee-oui.txt and ieee-iab.txt files.
 
-2020-07-05 Roy Hills <Roy.Hills@hotmail.com>
+2020-07-05 Roy Hills <royhills@hotmail.com>
 
 	* README.md, arp-fingerprint.1, arp-scan.1, get-iab.1, get-oui.1,
 	  mac-vendor.5, mac-vendor.txt: Update wiki references to use
 	  new URL http://www.royhills.co.uk/wiki/
 
-2019-10-24 Roy Hills <Roy.Hills@hotmail.com>
+2019-10-24 Roy Hills <royhills@hotmail.com>
 
 	* configure.ac: Increment version number to 1.9.7 in preparation for
 	  new release.
@@ -152,7 +424,7 @@
 
 	* Modified copyright statement in files to include up to 2019.
 
-2019-10-20 Roy Hills <Roy.Hills@hotmail.com>
+2019-10-20 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c: Call the pcap functions before get_hardware_address() to
 	  ensure lack of permissions is reported by pcap_activate() rather
@@ -166,7 +438,7 @@
 
 	* .gitignore: Added config.h.in~ to .gitignore.
 
-2019-10-13 Roy Hills <Roy.Hills@hotmail.com>
+2019-10-13 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c: Call pcap_set_immediate_mode() on the pcap handle so
 	  captured packets are processed immediately.  This pcap function was
@@ -194,7 +466,7 @@
 
 	* Updated ieee-oui.txt and ieee-iab.txt files.
 
-2019-08-29 Roy Hills <Roy.Hills@nta-monitor.com>
+2019-08-29 Roy Hills <royhills@hotmail.com>
 
 	* arp-scan.c: include the interface MAC address in the interface
 	  summary output.  E.g.
@@ -203,7 +475,7 @@
 
 	* Updated ieee-oui.txt and ieee-iab.txt files.
 
-2019-03-16 Roy Hills <Roy.Hills@nta-monitor.com>
+2019-03-16 Roy Hills <royhills@hotmail.com>
 
 	* acinclude.m4: Use AC_TRY_LINK instead of AC_TRY_COMPILE when
 	  determining if tack protector support is supported, as some
