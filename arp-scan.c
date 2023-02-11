@@ -337,6 +337,7 @@ main(int argc, char *argv[]) {
       free(filter_string);
       if ((pcap_setfilter(pcap_handle, &filter)) < 0)
          err_msg("pcap_setfilter: %s", pcap_geterr(pcap_handle));
+      pcap_freecode(&filter);
    } else { /* Reading packets from file */
       pcap_fd = -1;
    }
@@ -453,6 +454,14 @@ main(int argc, char *argv[]) {
       if (write_pkt_to_file == -1)
          err_sys("open %s", pkt_filename);
    }
+   /*
+    * If we have the OpenBSD pledge(2) system call, use it to restrict
+    * system operations from this point.
+    */
+#ifdef HAVE_PLEDGE
+   if (pledge("stdio dns bpf", NULL) == -1)
+      err_sys("pledge");
+#endif
    /*
     * Create and initialise array of pointers to host entries.
     */
@@ -2175,6 +2184,9 @@ arp_scan_version(void) {
    printf("%s\n", pcap_lib_version());
 #ifdef HAVE_LIBCAP
    printf("Built with libcap POSIX.1e capability support.\n");
+#endif
+#ifdef HAVE_PLEDGE
+   printf("Built with OpenBSD pledge(2) support.\n");
 #endif
 }
 
